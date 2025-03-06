@@ -34,8 +34,9 @@ def translate_to_english(text):
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
-        return response.choices[0].message.content.strip()  # ✅ NEW API FORMAT
+        return response.choices[0].message.content.strip()  # ✅ Correct API usage
     return text  # Return original if already English
+
 
 
 # Get Spotify Access Token
