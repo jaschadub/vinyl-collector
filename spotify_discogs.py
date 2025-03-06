@@ -27,18 +27,16 @@ REQUEST_DELAY = 1.1   # Slightly over 1 second to avoid hitting the limit
 
 # Function to translate text using OpenAI
 def translate_to_english(text):
-    """Translate non-Latin text to English using OpenAI API."""
-    # Detect non-Latin characters (e.g., Japanese/Kanji)
-    if re.search(r'[\u3040-\u30FF\u4E00-\u9FFF]', text):
+    """Translate non-Latin text to English using OpenAI API (Updated for API v1.0+)."""
+    if re.search(r'[\u3040-\u30FF\u4E00-\u9FFF]', text):  # Detect Japanese/Kanji characters
         prompt = f"Translate this album or artist name to English: {text}"
-        # Create a chat completion using the OpenAI API
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}]
         )
-        # Extract and return the translated text from the response
-        return response.choices[0].message['content'].strip()
-    return text  # Return the original text if it's already in English
+        return response.choices[0].message['content'].strip()  # ✅ Correct API usage
+    return text  # Return original if already English
+
 
 
 
