@@ -5,6 +5,57 @@ import os
 import openai
 from dotenv import load_dotenv
 from thefuzz import fuzz
+import time
+
+def search_discogs(title, artist):
+    url = "https://api.discogs.com/database/search"
+    params = {
+        "q": title,
+        "artist": artist,
+        "format": "vinyl",
+        "type": "release",
+        "token": DISCOGS_TOKEN
+    }
+
+    while True:  # Loop to handle retries
+        response = requests.get(url, params=params)
+
+        if response.status_code == 429:  # Too Many Requests
+            print("⚠️ Hit Discogs rate limit! Sleeping for 60 seconds...")
+            time.sleep(60)  # Wait before retrying
+            continue  # Retry the request
+
+        if response.status_code != 200:
+            print(f"Error searching Discogs for {title} - {artist}: {response.json().get('message', 'Unknown error')}")
+            return None, None, None, None
+
+        # Get remaining rate limit
+        remaining_requests = int(response.headers.get("X-Discogs-Ratelimit-Remaining", 1))
+
+        # If fewer than 5 requests left, sleep to avoid hitting the limit
+        if remaining_requests < 5:
+            print("⚠️ Approaching Discogs rate limit. Sleeping for 30 seconds...")
+            time.sleep(30)
+
+        data = response.json()
+        best_match = None
+        highest_score = 0
+
+        for result in data.get("results", []):
+            discogs_title = result.get("title", "")
+            discogs_artist = " ".join(result.get("artist", []))
+            title_score = fuzz.ratio(title.lower(), discogs_title.lower())
+            artist_score = fuzz.ratio(artist.lower(), discogs_artist.lower())
+            average_score = (title_score + artist_score) / 2
+
+            if average_score > highest_score:
+                highest_score = average_score
+                best_match = result
+
+        if highest_score > 65 and best_match:
+            return best_match["id"], best_match["title"], best_match.get("year", "Unknown"), best_match.get("label", ["Unknown"])[0]
+        else:
+            return None, None, None, None
 
 # Load environment variables from .env file
 load_dotenv()
