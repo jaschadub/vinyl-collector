@@ -6,6 +6,7 @@ This script automates adding **Spotify playlist tracks** to your **Discogs wantl
 - ✅ **Retrieves tracks** from a given Spotify playlist.
 - ✅ **Searches for vinyl records** on Discogs.
 - ✅ **Adds matches to your Discogs wantlist**.
+- ✅ **Uses a `.env` file** for secure API key storage.
 - ✅ **Handles Spotify authentication** (Client Credentials Flow).
 - ✅ **Respects Discogs rate limits** (auto-throttling and retry on 429 errors).
 
@@ -15,39 +16,55 @@ This script automates adding **Spotify playlist tracks** to your **Discogs wantl
 
 1. **Python 3.7+** installed.
 2. Spotify & Discogs API credentials.
+3. Required Python packages (`requests`, `python-dotenv`).
 
 ---
 
 ## 🔧 Setup
 
-### **1. Get API Credentials**
+### **1️⃣ Get API Credentials**
 #### **Spotify API**
-- Sign up at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
+- Sign up at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/).
 - Create an app to get:
   - **Client ID**
   - **Client Secret**
 
 #### **Discogs API**
-- Sign up at [Discogs Developer Portal](https://www.discogs.com/developers/)
+- Sign up at [Discogs Developer Portal](https://www.discogs.com/developers/).
 - Generate a **Personal Access Token** under "OAuth & Authentication".
 
 ---
 
-### **2. Install Dependencies**
+### **2️⃣ Install Dependencies**
+First, install required Python packages:
+
 ```sh
-pip install requests
+pip install requests python-dotenv
 ```
 
 ---
 
-### **3. Configure API Keys**
-Edit the script and replace these placeholders with your credentials:
+### **3️⃣ Configure the `.env` File**
+Create a file named `.env` in the same directory as the script, and add your credentials:
 
-```python
-SPOTIFY_CLIENT_ID = "your_spotify_client_id"
-SPOTIFY_CLIENT_SECRET = "your_spotify_client_secret"
-DISCOGS_TOKEN = "your_discogs_token"
-DISCOGS_USERNAME = "your_discogs_username"
+```ini
+# .env file for storing API credentials
+
+# Spotify API Credentials
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+
+# Discogs API Credentials
+DISCOGS_TOKEN=your_discogs_token
+DISCOGS_USERNAME=your_discogs_username
+```
+
+**❗ Important:**  
+- **DO NOT** commit the `.env` file to Git!  
+- Add `.env` to your `.gitignore` to keep it private:
+
+```sh
+echo ".env" >> .gitignore
 ```
 
 ---
@@ -65,9 +82,9 @@ python spotify_to_discogs.py YOUR_SPOTIFY_PLAYLIST_ID
 python spotify_to_discogs.py 1GLq1rt6Hs5gJpImyTAZWx
 ```
 
-👉 **How to find a Playlist ID?**  
+### **How to Find Your Playlist ID?**
 - Open Spotify and navigate to your playlist.
-- Copy the URL (`https://open.spotify.com/playlist/1GLq1rt6Hs5gJpImyTAZWx`).
+- Copy the URL (e.g., `https://open.spotify.com/playlist/1GLq1rt6Hs5gJpImyTAZWx`).
 - The part after `/playlist/` is the **Playlist ID**.
 
 ---
@@ -97,9 +114,9 @@ python spotify_to_discogs.py 1GLq1rt6Hs5gJpImyTAZWx
 ---
 
 ## 🔄 Future Improvements
-- [ ] Store credentials in a `.env` file instead of editing the script.
-- [ ] Support adding **only specific tracks** from a playlist.
-- [ ] Improve **fuzzy matching** for track searches on Discogs.
+- [ ] Implement fuzzy matching for better track searches on Discogs.
+- [ ] Add support for searching multiple formats (CD, cassette, etc.).
+- [ ] Store wantlist additions in a local database for tracking.
 
 ---
 
@@ -110,4 +127,5 @@ This project is licensed under the **MIT License**.
 
 ## 🎧 Happy Collecting!
 Got issues? **Open a GitHub issue** or contribute to improve the script! 🚀
+
 
