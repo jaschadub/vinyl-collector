@@ -5,7 +5,20 @@ import os
 import openai
 from dotenv import load_dotenv
 from thefuzz import fuzz
+import openai
 import time
+import re
+
+def translate_to_english(text):
+    """Translate non-Latin text to English using OpenAI API."""
+    if re.search(r'[\u3040-\u30FF\u4E00-\u9FFF]', text):  # Detect Japanese/Kanji characters
+        prompt = f"Translate this album or artist name to English: {text}"
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": prompt}]
+        )
+        return response["choices"][0]["message"]["content"].strip()
+    return text  # Return original if it's already in English
 
 def search_discogs(title, artist):
     url = "https://api.discogs.com/database/search"
@@ -17,22 +30,19 @@ def search_discogs(title, artist):
         "token": DISCOGS_TOKEN
     }
 
-    while True:  # Loop to handle retries
+    while True:
         response = requests.get(url, params=params)
 
-        if response.status_code == 429:  # Too Many Requests
+        if response.status_code == 429:
             print("⚠️ Hit Discogs rate limit! Sleeping for 60 seconds...")
-            time.sleep(60)  # Wait before retrying
+            time.sleep(60)
             continue  # Retry the request
 
         if response.status_code != 200:
             print(f"Error searching Discogs for {title} - {artist}: {response.json().get('message', 'Unknown error')}")
             return None, None, None, None
 
-        # Get remaining rate limit
         remaining_requests = int(response.headers.get("X-Discogs-Ratelimit-Remaining", 1))
-
-        # If fewer than 5 requests left, sleep to avoid hitting the limit
         if remaining_requests < 5:
             print("⚠️ Approaching Discogs rate limit. Sleeping for 30 seconds...")
             time.sleep(30)
@@ -44,9 +54,23 @@ def search_discogs(title, artist):
         for result in data.get("results", []):
             discogs_title = result.get("title", "")
             discogs_artist = " ".join(result.get("artist", []))
-            title_score = fuzz.ratio(title.lower(), discogs_title.lower())
-            artist_score = fuzz.ratio(artist.lower(), discogs_artist.lower())
+
+            # Translate if necessary
+            translated_discogs_title = translate_to_english(discogs_title)
+            translated_discogs_artist = translate_to_english(discogs_artist)
+
+            # Compare original and translated versions
+            title_score = max(
+                fuzz.ratio(title.lower(), discogs_title.lower()),
+                fuzz.ratio(title.lower(), translated_discogs_title.lower())
+            )
+            artist_score = max(
+                fuzz.ratio(artist.lower(), discogs_artist.lower()),
+                fuzz.ratio(artist.lower(), translated_discogs_artist.lower())
+            )
             average_score = (title_score + artist_score) / 2
+
+            print(f"DEBUG: Found '{discogs_title}' (translated: '{translated_discogs_title}') by '{discogs_artist}' | Score: {average_score}")
 
             if average_score > highest_score:
                 highest_score = average_score
