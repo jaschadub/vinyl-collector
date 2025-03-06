@@ -27,15 +27,16 @@ REQUEST_DELAY = 1.1   # Slightly over 1 second to avoid hitting the limit
 
 # Function to translate text using OpenAI
 def translate_to_english(text):
-    """Translate non-Latin text to English using OpenAI API."""
+    """Translate non-Latin text to English using OpenAI API (Updated for API v1)."""
     if re.search(r'[\u3040-\u30FF\u4E00-\u9FFF]', text):  # Detect Japanese/Kanji characters
         prompt = f"Translate this album or artist name to English: {text}"
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}]
         )
-        return response["choices"][0]["message"]["content"].strip()
-    return text  # Return original if it's already in English
+        return response.choices[0].message.content.strip()  # ✅ NEW API FORMAT
+    return text  # Return original if already English
+
 
 # Get Spotify Access Token
 def get_spotify_access_token():
