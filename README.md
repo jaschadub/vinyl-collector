@@ -5,7 +5,7 @@ This script automates adding **Spotify playlist tracks** to your **Discogs wantl
 ## 🚀 Features
 - ✅ **Retrieves tracks** from a given Spotify playlist.
 - ✅ **Searches for vinyl records** on Discogs.
-- ✅ **Adds matches to your Discogs wantlist**.
+- ✅ **Avoids duplicates** by checking your existing Discogs wantlist before adding.
 - ✅ **Uses a `.env` file** for secure API key storage.
 - ✅ **Handles Spotify authentication** (Client Credentials Flow).
 - ✅ **Respects Discogs rate limits** (auto-throttling and retry on 429 errors).
@@ -36,7 +36,7 @@ This script automates adding **Spotify playlist tracks** to your **Discogs wantl
 ---
 
 ### **2️⃣ Install Dependencies**
-First, install required Python packages:
+Install required Python packages:
 
 ```sh
 pip install requests python-dotenv
@@ -91,13 +91,13 @@ python spotify_to_discogs.py 1GLq1rt6Hs5gJpImyTAZWx
 
 ## 📊 How It Works
 
-1. **Fetches the playlist tracks** from Spotify.
-2. **Searches for vinyl releases** on Discogs.
-3. **Adds matching records** to your Discogs wantlist.
-4. **Handles rate limiting**:
-   - Adds a small delay between requests.
-   - Sleeps if too close to API limits.
-   - Retries if Discogs returns a 429 error.
+1. **Fetches your existing wantlist** from Discogs.
+2. **Retrieves playlist tracks** from Spotify.
+3. **Searches for vinyl releases** on Discogs.
+4. **Checks if the release is already in your wantlist**.
+   - ✅ **If not in wantlist** → Adds it.
+   - ❌ **If already in wantlist** → Skips it.
+5. **Handles Discogs API rate limits automatically**.
 
 ---
 
@@ -109,6 +109,7 @@ python spotify_to_discogs.py 1GLq1rt6Hs5gJpImyTAZWx
 | `Error fetching playlist` | Check if your Spotify Client ID & Secret are correct. |
 | `No tracks found` | Ensure the playlist is **public**. |
 | `No vinyl found for track` | The track might not have a vinyl release on Discogs. |
+| `Skipping {release_id}, already in wantlist.` | This track was already in your Discogs wantlist. |
 | `Hit Discogs rate limit!` | The script will automatically pause and retry. |
 
 ---
@@ -127,5 +128,4 @@ This project is licensed under the **MIT License**.
 
 ## 🎧 Happy Collecting!
 Got issues? **Open a GitHub issue** or contribute to improve the script! 🚀
-
 
