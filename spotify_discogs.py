@@ -28,7 +28,6 @@ def get_spotify_access_token():
     }
 
     response = requests.post(url, headers=headers, data=data).json()
-    
     return response.get("access_token")
 
 # Get Spotify Playlist Tracks
@@ -52,6 +51,21 @@ def get_spotify_tracks(playlist_id, access_token):
             tracks.append((title, artist))
 
     return tracks
+
+# Get existing wantlist to avoid duplicates
+def get_existing_wantlist():
+    url = f"https://api.discogs.com/users/{DISCOGS_USERNAME}/wants"
+    headers = {"Authorization": f"Discogs token={DISCOGS_TOKEN}"}
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print("Error retrieving existing wantlist.")
+        return set()
+
+    data = response.json()
+    existing_wants = {item["id"] for item in data.get("wants", [])}  # Collect existing release IDs
+    return existing_wants
 
 # Search for Vinyl Releases on Discogs
 def search_discogs(title, artist):
@@ -82,8 +96,12 @@ def search_discogs(title, artist):
 
     return None
 
-# Add Vinyl to Wantlist
-def add_to_wantlist(release_id):
+# Add Vinyl to Wantlist (Only if Not a Duplicate)
+def add_to_wantlist(release_id, existing_wants):
+    if release_id in existing_wants:
+        print(f"Skipping {release_id}, already in wantlist.")
+        return False
+
     url = f"https://api.discogs.com/users/{DISCOGS_USERNAME}/wants/{release_id}"
     headers = {"Authorization": f"Discogs token={DISCOGS_TOKEN}"}
     
@@ -92,7 +110,7 @@ def add_to_wantlist(release_id):
     if response.status_code == 429:  # Too Many Requests
         print("Hit Discogs rate limit! Sleeping for 60 seconds...")
         time.sleep(60)
-        return add_to_wantlist(release_id)  # Retry after sleeping
+        return add_to_wantlist(release_id, existing_wants)  # Retry after sleeping
 
     return response.status_code == 201
 
@@ -114,13 +132,18 @@ def main():
         print("No tracks found in the playlist or an error occurred.")
         return
 
+    # Fetch existing wantlist before processing
+    existing_wants = get_existing_wantlist()
+
     for title, artist in tracks:
         release_id = search_discogs(title, artist)
         time.sleep(REQUEST_DELAY)  # Add delay between searches to avoid rate limits
         
         if release_id:
-            success = add_to_wantlist(release_id)
-            print(f"Added {title} - {artist} to wantlist: {success}")
+            success = add_to_wantlist(release_id, existing_wants)
+            if success:
+                print(f"Added {title} - {artist} to wantlist.")
+                existing_wants.add(release_id)  # Update local cache
         else:
             print(f"No vinyl found for {title} - {artist}")
 
