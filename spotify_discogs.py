@@ -2,16 +2,23 @@ import requests
 import argparse
 import time
 import os
+import openai
 from dotenv import load_dotenv
+from thefuzz import fuzz
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve API credentials from .env
+# Retrieve API credentials and settings from .env
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 DISCOGS_TOKEN = os.getenv("DISCOGS_TOKEN")
 DISCOGS_USERNAME = os.getenv("DISCOGS_USERNAME")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")  # Default model
+
+# Set OpenAI API key
+openai.api_key = OPENAI_API_KEY
 
 # Discogs API Rate Limit Config
 DISC_RATE_LIMIT = 60  # Discogs allows 60 requests per minute
@@ -71,7 +78,6 @@ def get_existing_wantlist():
 def search_discogs(title, artist):
     url = f"https://api.discogs.com/database/search"
     params = {
-        "q": title,
         "artist": artist,
         "format": "vinyl",
         "type": "release",
@@ -82,19 +88,49 @@ def search_discogs(title, artist):
 
     if response.status_code != 200:
         print(f"Error searching Discogs for {title} - {artist}: {response.json().get('message', 'Unknown error')}")
-        return None
-
-    # Rate Limiting Check
-    remaining_requests = int(response.headers.get("X-Discogs-Ratelimit-Remaining", DISC_RATE_LIMIT))
-    if remaining_requests < 5:  # If too close to the limit, slow down
-        print("Approaching rate limit. Pausing to prevent 429 errors...")
-        time.sleep(30)
+        return None, None, None, None
 
     data = response.json()
-    if data.get("results"):
-        return data["results"][0]["id"]  # Return the first matching release ID
+    best_match = None
+    highest_score = 0
 
-    return None
+    for result in data.get("results", []):
+        discogs_title = result.get("title", "")
+        discogs_artist = " ".join(result.get("artist", []))
+        title_score = fuzz.ratio(title.lower(), discogs_title.lower())
+        artist_score = fuzz.ratio(artist.lower(), discogs_artist.lower())
+        average_score = (title_score + artist_score) / 2
+
+        if average_score > highest_score:
+            highest_score = average_score
+            best_match = result
+
+    # Set a threshold for what you consider a good match
+    if highest_score > 80:  # Adjust the threshold as needed
+        return best_match["id"], best_match["title"], best_match.get("year", "Unknown"), best_match.get("label", ["Unknown"])[0]
+    else:
+        return None, None, None, None
+
+# Use OpenAI's ChatGPT to confirm match
+def chatgpt_match(spotify_track, discogs_release, model):
+    prompt = f"Do the following Spotify track and Discogs release refer to the same song?\n\nSpotify Track: {spotify_track}\nDiscogs Release: {discogs_release}\n\nAnswer 'yes' or 'no' and provide a brief explanation."
+    response = openai.Completion.create(
+        engine=model,
+        prompt=prompt,
+        max_tokens=50,
+        n=1,
+        stop=None,
+        temperature=0
+    )
+    answer = response.choices[0].text.strip().lower()
+    return answer.startswith("yes")
+
+# Prompt user for confirmation
+def prompt_user_confirmation(spotify_track, discogs_release):
+    print(f"\nSpotify Track: {spotify_track}")
+    print(f"Discogs Match: {discogs_release}")
+    user_input = input("Do you want to add this release to your wantlist? (yes/no): ").strip().lower()
+    return user_input == "yes"
 
 # Add Vinyl to Wantlist (Only if Not a Duplicate)
 def add_to_wantlist(release_id, existing_wants):
@@ -108,44 +144,6 @@ def add_to_wantlist(release_id, existing_wants):
     response = requests.put(url, headers=headers)
 
     if response.status_code == 429:  # Too Many Requests
-        print("Hit Discogs rate limit! Sleeping for 60 seconds...")
-        time.sleep(60)
-        return add_to_wantlist(release_id, existing_wants)  # Retry after sleeping
-
-    return response.status_code == 201
-
-# Main function to process CLI arguments
-def main():
-    parser = argparse.ArgumentParser(description="Add Spotify playlist tracks to Discogs wantlist.")
-    parser.add_argument("playlist_id", type=str, help="Spotify playlist ID")
-    args = parser.parse_args()
-
-    # Get a new access token for Spotify API
-    spotify_access_token = get_spotify_access_token()
-    if not spotify_access_token:
-        print("Failed to obtain Spotify access token.")
-        return
-
-    tracks = get_spotify_tracks(args.playlist_id, spotify_access_token)
-    
-    if not tracks:
-        print("No tracks found in the playlist or an error occurred.")
-        return
-
-    # Fetch existing wantlist before processing
-    existing_wants = get_existing_wantlist()
-
-    for title, artist in tracks:
-        release_id = search_discogs(title, artist)
-        time.sleep(REQUEST_DELAY)  # Add delay between searches to avoid rate limits
-        
-        if release_id:
-            success = add_to_wantlist(release_id, existing_wants)
-            if success:
-                print(f"Added {title} - {artist} to wantlist.")
-                existing_wants.add(release_id)  # Update local cache
-        else:
-            print(f"No vinyl found for {title} - {artist}")
-
-if __name__ == "__main__":
-    main()
+        print("Hit Discogs rate limit
+::contentReference[oaicite:0]{index=0}
+ 
