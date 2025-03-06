@@ -144,6 +144,60 @@ def add_to_wantlist(release_id, existing_wants):
     response = requests.put(url, headers=headers)
 
     if response.status_code == 429:  # Too Many Requests
-        print("Hit Discogs rate limit
-::contentReference[oaicite:0]{index=0}
- 
+        print("Hit Discogs rate limit! Sleeping for 60 seconds...")
+        time.sleep(60)
+        return add_to_wantlist(release_id, existing_wants)  # Retry after sleeping
+
+    return response.status_code == 201
+
+# Main function to process CLI arguments
+def main():
+    parser = argparse.ArgumentParser(description="Add Spotify playlist tracks to Discogs wantlist.")
+    parser.add_argument("playlist_id", type=str, help="Spotify playlist ID")
+    parser.add_argument("--model", type=str, help="Specify OpenAI model (default: from .env)", default=OPENAI_MODEL)
+    args = parser.parse_args()
+
+    # Get a new access token for Spotify API
+    spotify_access_token = get_spotify_access_token()
+    if not spotify_access_token:
+        print("Failed to obtain Spotify access token.")
+        return
+
+    tracks = get_spotify_tracks(args.playlist_id, spotify_access_token)
+    
+    if not tracks:
+        print("No tracks found in the playlist or an error occurred.")
+        return
+
+    # Fetch existing wantlist before processing
+    existing_wants = get_existing_wantlist()
+
+    for title, artist in tracks:
+        release_id, discogs_title, discogs_year, discogs_label = search_discogs(title, artist)
+        time.sleep(REQUEST_DELAY)  # Add delay between searches to avoid rate limits
+        
+        if release_id:
+            spotify_track_info = f"{title} by {artist}"
+            discogs_release_info = f"{discogs_title} by {discogs_label} ({discogs_year})"
+
+            # Use ChatGPT to confirm the match
+            is_match = chatgpt_match(spotify_track_info, discogs_release_info, args.model)
+
+            if is_match:
+                # Prompt user for confirmation
+                if prompt_user_confirmation(spotify_track_info, discogs_release_info):
+                    success = add_to_wantlist(release_id, existing_wants)
+                    if success:
+                        print(f"Added {title} - {artist} to wantlist.")
+                        existing_wants.add(release_id)  # Update local cache
+                    else:
+                        print(f"Failed to add {title} - {artist} to wantlist.")
+                else:
+                    print(f"Skipped adding {title} - {artist} to wantlist.")
+            else:
+                print(f"ChatGPT determined that {title} by {artist} does not match the Discogs release.")
+        else:
+            print(f"No suitable vinyl found for {title} - {artist}")
+
+if __name__ == "__main__":
+    main()
