@@ -1,17 +1,21 @@
 import requests
 import argparse
 import time
+import os
+from dotenv import load_dotenv
 
-# CONFIGURE YOUR KEYS
-SPOTIFY_CLIENT_ID = "your_spotify_client_id"
-SPOTIFY_CLIENT_SECRET = "your_spotify_client_secret"
-DISCOGS_TOKEN = "your_discogs_token"
-DISCOGS_USERNAME = "your_discogs_username"
+# Load environment variables from .env file
+load_dotenv()
+
+# Retrieve API credentials from .env
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+DISCOGS_TOKEN = os.getenv("DISCOGS_TOKEN")
+DISCOGS_USERNAME = os.getenv("DISCOGS_USERNAME")
 
 # Discogs API Rate Limit Config
 DISC_RATE_LIMIT = 60  # Discogs allows 60 requests per minute
 REQUEST_DELAY = 1.1   # Slightly over 1 second to avoid hitting the limit
-
 
 # Get Spotify Access Token
 def get_spotify_access_token():
@@ -26,7 +30,6 @@ def get_spotify_access_token():
     response = requests.post(url, headers=headers, data=data).json()
     
     return response.get("access_token")
-
 
 # Get Spotify Playlist Tracks
 def get_spotify_tracks(playlist_id, access_token):
@@ -49,7 +52,6 @@ def get_spotify_tracks(playlist_id, access_token):
             tracks.append((title, artist))
 
     return tracks
-
 
 # Search for Vinyl Releases on Discogs
 def search_discogs(title, artist):
@@ -80,7 +82,6 @@ def search_discogs(title, artist):
 
     return None
 
-
 # Add Vinyl to Wantlist
 def add_to_wantlist(release_id):
     url = f"https://api.discogs.com/users/{DISCOGS_USERNAME}/wants/{release_id}"
@@ -94,7 +95,6 @@ def add_to_wantlist(release_id):
         return add_to_wantlist(release_id)  # Retry after sleeping
 
     return response.status_code == 201
-
 
 # Main function to process CLI arguments
 def main():
