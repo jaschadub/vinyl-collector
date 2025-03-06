@@ -76,14 +76,15 @@ def get_existing_wantlist():
 
 # Search for Vinyl Releases on Discogs
 def search_discogs(title, artist):
-    url = f"https://api.discogs.com/database/search"
+    url = "https://api.discogs.com/database/search"
     params = {
+        "q": title,  # Search more broadly instead of restricting to exact titles
         "artist": artist,
         "format": "vinyl",
-        "type": "release",
+        "type": "release",  # Try "master" in a separate search if no results found
         "token": DISCOGS_TOKEN
     }
-    
+
     response = requests.get(url, params=params)
 
     if response.status_code != 200:
@@ -97,16 +98,38 @@ def search_discogs(title, artist):
     for result in data.get("results", []):
         discogs_title = result.get("title", "")
         discogs_artist = " ".join(result.get("artist", []))
+
         title_score = fuzz.ratio(title.lower(), discogs_title.lower())
         artist_score = fuzz.ratio(artist.lower(), discogs_artist.lower())
         average_score = (title_score + artist_score) / 2
+
+        # Debugging: Print matches and scores
+        print(f"DEBUG: Found '{discogs_title}' by '{discogs_artist}' | Score: {average_score}")
 
         if average_score > highest_score:
             highest_score = average_score
             best_match = result
 
-    # Set a threshold for what you consider a good match
-    if highest_score > 80:  # Adjust the threshold as needed
+    # Try master release search if no good results were found
+    if highest_score < 70 and best_match is None:
+        print(f"Retrying search for master releases for {title} - {artist}...")
+        params["type"] = "master"
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            for result in data.get("results", []):
+                discogs_title = result.get("title", "")
+                discogs_artist = " ".join(result.get("artist", []))
+                title_score = fuzz.ratio(title.lower(), discogs_title.lower())
+                artist_score = fuzz.ratio(artist.lower(), discogs_artist.lower())
+                average_score = (title_score + artist_score) / 2
+
+                if average_score > highest_score:
+                    highest_score = average_score
+                    best_match = result
+
+    # Set a lower threshold to allow more potential matches
+    if highest_score > 65 and best_match:
         return best_match["id"], best_match["title"], best_match.get("year", "Unknown"), best_match.get("label", ["Unknown"])[0]
     else:
         return None, None, None, None
