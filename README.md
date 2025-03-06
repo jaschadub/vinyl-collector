@@ -111,6 +111,3 @@ This project is licensed under the **MIT License**.
 ## 🎧 Happy Collecting!
 Got issues? **Open a GitHub issue** or contribute to improve the script! 🚀
 
----
-
-This README is **formatted for GitHub** with headings, tables, and code blocks to ensure clarity. Let me know if you want any refinements! 🚀
