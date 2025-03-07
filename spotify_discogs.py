@@ -2,6 +2,7 @@ import requests
 import argparse
 import time
 import os
+import csv
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -114,36 +115,61 @@ def add_to_wantlist(release_id, existing_wants):
 
     return response.status_code == 201
 
+# Process text or CSV file
+def process_file(file_path):
+    tracks = []
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    if ext == ".txt":
+        with open(file_path, "r", encoding="utf-8") as file:
+            for line in file:
+                parts = line.strip().split(" - ")
+                if len(parts) == 2:
+                    tracks.append((parts[0], parts[1]))
+    elif ext == ".csv":
+        with open(file_path, "r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if len(row) >= 2:
+                    tracks.append((row[0], row[1]))
+    else:
+        print("Unsupported file format. Please use a .txt or .csv file.")
+    
+    return tracks
+
 # Main function to process CLI arguments
 def main():
-    parser = argparse.ArgumentParser(description="Add Spotify playlist tracks to Discogs wantlist.")
-    parser.add_argument("playlist_id", type=str, help="Spotify playlist ID")
+    parser = argparse.ArgumentParser(description="Add Spotify playlist tracks or file-listed LPs to Discogs wantlist.")
+    parser.add_argument("--playlist_id", type=str, help="Spotify playlist ID")
+    parser.add_argument("--file", type=str, help="Path to a text or CSV file containing album list")
     args = parser.parse_args()
 
-    # Get a new access token for Spotify API
-    spotify_access_token = get_spotify_access_token()
-    if not spotify_access_token:
-        print("Failed to obtain Spotify access token.")
-        return
-
-    tracks = get_spotify_tracks(args.playlist_id, spotify_access_token)
+    tracks = []
+    if args.playlist_id:
+        spotify_access_token = get_spotify_access_token()
+        if not spotify_access_token:
+            print("Failed to obtain Spotify access token.")
+            return
+        tracks = get_spotify_tracks(args.playlist_id, spotify_access_token)
+    
+    if args.file:
+        tracks.extend(process_file(args.file))
     
     if not tracks:
-        print("No tracks found in the playlist or an error occurred.")
+        print("No tracks found from the playlist or file.")
         return
-
-    # Fetch existing wantlist before processing
+    
     existing_wants = get_existing_wantlist()
 
     for title, artist in tracks:
         release_id = search_discogs(title, artist)
-        time.sleep(REQUEST_DELAY)  # Add delay between searches to avoid rate limits
+        time.sleep(REQUEST_DELAY)
         
         if release_id:
             success = add_to_wantlist(release_id, existing_wants)
             if success:
                 print(f"Added {title} - {artist} to wantlist.")
-                existing_wants.add(release_id)  # Update local cache
+                existing_wants.add(release_id)
         else:
             print(f"No vinyl found for {title} - {artist}")
 
