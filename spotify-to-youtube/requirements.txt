@@ -1,0 +1,17 @@
+# Core utilities
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Spotify API client
+spotipy==2.23.0
+
+# Discogs API client
+python-discogs-client==2.6.2
+
+# Web scraping
+beautifulsoup4==4.12.2
+
+# YouTube API
+google-api-python-client==2.108.0
+google-auth-httplib2==0.1.0
+google-auth-oauthlib==1.1.0
